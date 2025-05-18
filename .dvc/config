@@ -1,4 +1,4 @@
 [core]
-    remote = storage
-['remote "storage"']
-    url = gdrive://1bVXYNIAv89xE6GfRVIbnunb0XRTYoTL7
+    remote = s3storage
+['remote "s3storage"']
+    url = s3://dvc-tesis/storage/
