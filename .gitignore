@@ -257,3 +257,5 @@ crashlytics.properties
 crashlytics-build.properties
 fabric.properties
 /data.csv
+/SeoulBikeData.csv
+/50_Startups.csv
