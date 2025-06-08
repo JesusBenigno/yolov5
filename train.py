@@ -15,6 +15,7 @@ Datasets:   https://github.com/ultralytics/yolov5/tree/master/data
 Tutorial:   https://docs.ultralytics.com/yolov5/tutorials/train_custom_data
 """
 
+import mlflow
 import argparse
 import math
 import os
@@ -156,11 +157,17 @@ def train(hyp, opt, device, callbacks):
     w = save_dir / "weights"  # weights dir
     (w.parent if evolve else w).mkdir(parents=True, exist_ok=True)  # make dir
     last, best = w / "last.pt", w / "best.pt"
+    
+    for opt_key in opt.__dict__:
+        opt_value = opt.__dict__[opt.key]
+        if opt_value is not None and opt_value != '':
+            mlflow.log_param(opt_key, opt_value)
 
     # Hyperparameters
     if isinstance(hyp, str):
         with open(hyp, errors="ignore") as f:
             hyp = yaml.safe_load(f)  # load hyps dict
+            mlflow.log_params({F'hyper_{key}': hyp[key] for key in hyp})
     LOGGER.info(colorstr("hyperparameters: ") + ", ".join(f"{k}={v}" for k, v in hyp.items()))
     opt.hyp = hyp.copy()  # for saving hyps to checkpoints
 
@@ -476,6 +483,16 @@ def train(hyp, opt, device, callbacks):
                 best_fitness = fi
             log_vals = list(mloss) + list(results) + lr
             callbacks.run("on_fit_epoch_end", log_vals, epoch, best_fitness, fi)
+            
+            #MLFlow
+            mlflow.log_metric("P", results[0], step=epoch)
+            mlflow.log_metric("R", results[1], step=epoch)
+            mlflow.log_metric("mAP.5", results[2], step=epoch)
+            mlflow.log_metric("mAP.5-.95", results[3], step=epoch)
+            mloss_cpu = mloss.cpu().numpy()
+            mlflow.log_metric("box", mloss_cpu[0], step=epoch)
+            mlflow.log_metric("obj", mloss_cpu[1], step=epoch)
+            mlflow.log_metric("cls", mloss_cpu[2], step=epoch)
 
             # Save model
             if (not nosave) or (final_epoch and not evolve):  # if save
@@ -499,6 +516,7 @@ def train(hyp, opt, device, callbacks):
                     torch.save(ckpt, w / f"epoch{epoch}.pt")
                 del ckpt
                 callbacks.run("on_model_save", last, epoch, final_epoch, best_fitness, fi)
+                mlflow.log_artifacts(w)
 
         # EarlyStopping
         if RANK != -1:  # if DDP training
@@ -686,7 +704,10 @@ def main(opt, callbacks=Callbacks()):
 
     # Train
     if not opt.evolve:
-        train(opt.hyp, opt, device, callbacks)
+        mlflow.set_tracking_uri("http://127.0.0.1:5000/")
+        mlflow.set_experiment("Prueba dummy")
+        with mlflow.start_run(run_name=opt.name):
+            train(opt.hyp, opt, device, callbacks)
 
     # Evolve hyperparameters (optional)
     else:
