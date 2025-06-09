@@ -159,7 +159,7 @@ def train(hyp, opt, device, callbacks):
     last, best = w / "last.pt", w / "best.pt"
     
     for opt_key in opt.__dict__:
-        opt_value = opt.__dict__[opt.key]
+        opt_value = opt.__dict__[opt_key]
         if opt_value is not None and opt_value != '':
             mlflow.log_param(opt_key, opt_value)
 
@@ -704,8 +704,6 @@ def main(opt, callbacks=Callbacks()):
 
     # Train
     if not opt.evolve:
-        mlflow.set_tracking_uri("http://127.0.0.1:5000/")
-        mlflow.set_experiment("Prueba dummy")
         with mlflow.start_run(run_name=opt.name):
             train(opt.hyp, opt, device, callbacks)
 
